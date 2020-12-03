@@ -1,23 +1,26 @@
-import { Timer, Unit } from "w3ts";
+import { MapPlayer, SyncRequest } from "w3ts";
+import { onMCCDetect, WebRequest } from "w3mcc";
 import { Players } from "w3ts/globals";
 import { addScriptHook, W3TS_HOOK } from "w3ts/hooks";
 
-const BUILD_DATE = compiletime(() => new Date().toUTCString());
-const TS_VERSION = compiletime(() => require("typescript").version);
-const TSTL_VERSION = compiletime(() => require("typescript-to-lua").version);
-
 function tsMain() {
-  print(`Build: ${BUILD_DATE}`);
-  print(`Typescript: v${TS_VERSION}`);
-  print(`Transpiler: v${TSTL_VERSION}`);
-  print(" ");
-  print("Welcome to TypeScript!");
+  const syncRequests: SyncRequest[] = [];
 
-  const unit = new Unit(Players[0], FourCC("hfoo"), 0, 0, 270);
-  unit.name = "TypeScript";
+  Players.forEach((p) => {
+    syncRequests[p.id] = new SyncRequest(p).then((response) => {
+      BJDebugMsg(`${p.name}: ${response.data} BTC is $1`);
+    })
+  })
 
-  new Timer().start(1.00, true, () => {
-    unit.color = Players[math.random(0, bj_MAX_PLAYERS)].color
+  onMCCDetect(() => {
+    print(`W3MCC Detected!`);
+
+    const p = MapPlayer.fromLocal();
+
+    new WebRequest(p, "GET", "https://blockchain.info/tobtc?currency=USD&value=1", (response) => {
+      print(`Syncing response (${response.contents.length})....`);
+      syncRequests[p.id].start(response.contents);
+    });
   });
 }
 
